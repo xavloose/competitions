@@ -13,4 +13,7 @@ import Text.Printf
 mapBy :: (Ord k) => (a -> k) -> [a] -> M.Map k [a]
 mapBy f = M.fromList . map (f . head &&& id) . L.groupBy ((==) `on` f) . L.sortBy (compare `on` f)
 
+odds (a:b:c) = b:(odds c)
+odds [] = []
+
 main = interact $
