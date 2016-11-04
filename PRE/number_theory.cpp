@@ -33,6 +33,18 @@ ll mod_inv(int a) {
 	return mod_pow(a, MOD - 2);
 }
 
+// Factorise a number, naively, in O(sqrt(n)).
+vector<pair<ll, int>> factorise(ll n) {
+	vector<pair<ll, int>> ans;
+	for (ll f = 2; f * f <= n; f++) if (!(n % f)) {
+		int p = 0;
+		while (!(n % f)) n /= f, p++;
+		ans.emplace_back(f, p);
+	}
+	if (n > 1) ans.emplace_back(n, 1);
+	return ans;
+}
+
 // The number of divisors grows rather slowly. For example, for all n <= 10^9,
 // d(n) <= 1344, where d(n) is the number of divisors of n. See
 // "count_number_factors.cpp" for more information.
@@ -42,17 +54,6 @@ vll get_divisors(ll n) {
 	for (; x * x < n; x++) if (!(n % x)) ans.push_back(x), ans.push_back(n / x);
 	if (x * x == n) ans.push_back(x);
 	sort(all(ans));
-	return ans;
-}
-
-vector<pair<ll, int>> factorise(ll n) {
-	vector<pair<ll, int>> ans;
-	for (ll f = 2; f * f <= n; f++) if (!(n % f)) {
-		int p = 0;
-		while (!(n % f)) n /= f, p++;
-		ans.emplace_back(f, p);
-	}
-	if (n > 1) ans.emplace_back(n, 1);
 	return ans;
 }
 
@@ -69,8 +70,60 @@ vi smallest_factor(int n) {
 	return ans;
 }
 
+// This function computes the prime factorisation of each number less than n.
+// One nice property is is that it runs in O(n * log(log(n))) as with the normal
+// sieve.
+//
+// The computed data structures are:
+//
+//     1. An array of primes.
+//     2. An array whose x-th entry is the factorisation of x.
+//
+// Here a factorisation of x is a vector of pairs, where the first entry of the
+// pair is the index of the prime in the array of primes, and the second entry
+// of the pair is the prime's power in x. I.e,
+//
+//     x = product(primes[pid] ^ power for (pid, power) in factorisation)
+//
+// We proceed to show some results about its complexity. Let Omega(n) denote the
+// number of prime factors of n, with multiplicity. I.e., if we factor x as
+// above, then
+//
+//	   Omega(x) = sum(power for (pid, power) in factorisation)
+//
+// Then the runtime of the function is
+//
+//	   O(sum(Omega(x) for x < n))
+//
+// Omega actually grows very slowly. Since Omega(x * y) = Omega(x) + Omega(y)
+// and Omega(p) = 1 for each prime p, then Omega grows at least as slowly as
+// the logarithm. So the above runtime is at most O(n * log(n)). In fact, we can
+// reduce the bound much further.
+//
+// As with the normal sieve, we can rewrite the runtime using the prime harmonic
+// along with an additional term -- the prime power harmonic:
+//
+//     O(n * [sum(1 / p for primes p < n) + sum(1 / q for prime powers q < n)])
+//
+// It is a well-known combinatorial result that the set of prime powers is small
+// -- i.e., the sum of its reciprocals converges. Hence we can ignore it in the
+// asymptotic expression above. The final complexity is thus just the same as
+// that of the ordinary sieve: O(n * log(log(n))).
+void sieve_with_factors(int n, int * primes, vector<pii> * factors) {
+	int pid = 0;
+	range (p, 2, n) if (factors[p].empty()) {
+		primes[pid] = p;
+		for (int x = p; x < n; x += p) {
+			int power = 0;
+			for (int y = x; (y % p) == 0; y /= p) power++;
+			factors[x].emplace_back(pid, power);
+		}
+		pid++;
+	}
+}
+
 // This not a function, but rather a technique for computing
-// f(x) = g(x) - (sum of f(y) for all y such that y divides x)
+// f(x) = g(x) - sum(f(y) for all y dividing x)
 // This can be useful in many number theory problems (e.g. SRMs 603 and 626).
 int g(int x) { /* dummy function */ return x; }
 void divisor_summation(int n) {
